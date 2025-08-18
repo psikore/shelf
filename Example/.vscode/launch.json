@@ -1,0 +1,23 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Run Calc",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/src/example/calculator.py",
+            "console": "integratedTerminal"
+        },
+        {
+            "name": "test calc",
+            "type": "python",
+            "request": "launch",
+            "module": "pytest",
+            "args": [
+                "tests"
+            ],
+            "console": "integratedTerminal",
+            "justMyCode": false
+        }
+    ]
+}
