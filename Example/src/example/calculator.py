@@ -13,3 +13,7 @@ def subtract(a, b):
 def slow_subtract(a, b):
     time.sleep(30)
     return a - b
+
+
+def multiply(a, b):
+    return a * b

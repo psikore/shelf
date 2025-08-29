@@ -3,14 +3,14 @@
     "configurations": [
         {
             "name": "Run Calc",
-            "type": "python",
+            "type": "debugpy",
             "request": "launch",
             "program": "${workspaceFolder}/src/example/calculator.py",
             "console": "integratedTerminal"
         },
         {
             "name": "test calc",
-            "type": "python",
+            "type": "debugpy",
             "request": "launch",
             "module": "pytest",
             "args": [

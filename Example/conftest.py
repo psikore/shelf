@@ -16,31 +16,17 @@ def pytest_collection_modifyitems(items):
             fp.write("setup done")
 
 
+class GlobalContext:
+    def __init__(self, val):
+        self._ctx = val
+
+    @property
+    def ctx(self):
+        return self._ctx
+
+
 @pytest.fixture(scope="session", autouse=True)
-def teardown_operations():
-    yield
-    if os.path.exists(MARKER_FILE):
-        print("\n[Teardown] cleanup post operations tests")
-        os.remove(MARKER_FILE)    
-
-
-# @pytest.fixture(scope="session", autouse=True)
-# def setup_operations(request):
-#     if "operations" in request.keywords:
-#         if not os.path.exists(MARKER_FILE):
-#             print("\n[Setup] init operations tests")
-#             with open(MARKER_FILE, "w") as fp:
-#                 fp.write("setup done")
-#         yield
-#         print("\n[Teardown] cleanup post operations tests")
-#         if os.path.exists(MARKER_FILE):
-#             os.remove(MARKER_FILE)
-#     else:
-#         yield
-
-
-# scope="module" runs once per test file
-# autouse=True applies automatically to all tests in the module
-# if you want to run only for tests with operations mark,
-# conditionally apply it.
-# to run only operations
+def global_context():
+    print("[+] pre-context")
+    yield GlobalContext(666)
+    print("[+] post-context")
