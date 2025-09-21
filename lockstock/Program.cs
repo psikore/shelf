@@ -1,147 +1,158 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using System.Runtime.Serialization;
-using System.Runtime.Serialization.Json;
 using System.IO;
-using System.Threading;
+using System.Collections.Generic;
+using System.Collections.Concurrent;
+using System.Runtime.Serialization.Json;
+using System.Text;
+using System.Runtime.Serialization;
 
-
-namespace LockStock
+namespace TwoSmokers
 {
-    [DataContract]
-    class EventLog
+    internal class Program
     {
-        [DataMember]
-        public int Id { get; set; }
+        public delegate void LogHandler(string message);
+        
+        public delegate string PurgeAndSerializeHandler();
 
-        [DataMember]
-        public string Message { get; set; }
-
-        public EventLog(int id, string message)
+        public static class Logger
         {
-            Id = id;
-            Message = message;
-        }
-    }
+            public static LogHandler LogDelegate;
 
-    [DataContract]
-    class EventLogger
-    {
-        [DataMember]
-        private List<EventLog> _events = new List<EventLog>();
+            public static PurgeAndSerializeHandler PurgeAndSerializeDelegate;
 
-        private readonly object _lock  = new object();
-
-        public void AddEvent(EventLog eventLog)
-        {
-            lock (_lock)
+            public static void Log(string message)
             {
-                _events.Add(eventLog);
+                LogDelegate?.Invoke(message);
+            }
+
+            public static string SerializeAndPurge()
+            {
+                return PurgeAndSerializeDelegate?.Invoke() ?? string.Empty;
             }
         }
 
-        public static string SerializeToString(EventLogger eventLogger)
+        public class ConsoleLogger
         {
-            lock (eventLogger._lock)
+            public void HandleLog(string message)
             {
-                var serializer = new DataContractJsonSerializer(typeof(EventLogger));
+                Console.WriteLine($"[Console] {message}");
+            }
+        }
+
+        public class FileLogger
+        {
+            private readonly string _filePath;
+
+            public FileLogger(string filePath)
+            {
+                _filePath = filePath;
+            }
+
+            public void HandleLog(string message)
+            {
+                File.AppendAllText(_filePath, $"[File] {message}{Environment.NewLine}");
+            }
+        }
+
+        public class MemoryLogger
+        {
+            private readonly ConcurrentQueue<string> _logs = new ConcurrentQueue<string>();
+
+            public void HandleLog(string message)
+            {
+                _logs.Enqueue($"[Memory] {message}");
+            }
+
+            public IReadOnlyCollection<string> PeekLogs()
+            {
+                // ToArray() gives a safe peek without modifying the queue
+                return _logs.ToArray();
+            }
+
+            public string PurgeAndSerialize()
+            {
+                var snapshot = new List<string>();
+
+                // TryDequeue safely drains the queue without locking.
+                while (_logs.TryDequeue(out var log))
+                {
+                    snapshot.Add(log);
+                }
+
+                var serializer = new DataContractJsonSerializer(typeof(List<string>));
                 using (var ms = new MemoryStream())
                 {
-                    serializer.WriteObject(ms, eventLogger);
+                    serializer.WriteObject(ms, snapshot);
                     return Encoding.UTF8.GetString(ms.ToArray());
                 }
             }
         }
-    }
 
-    class SnapshotEventLogger
-    {
-        [IgnoreDataMember]
-        private readonly List<EventLog> _events = new List<EventLog>();
 
-        private readonly object _lock = new object();
-
-        public void AddEvent(EventLog eventLog)
+        [DataContract]
+        public class Response
         {
-            lock (_lock)
-            {
-                _events.Add(eventLog);
-            }
+            [DataMember]
+            public string SerializedLogs { get; set; }
+
+            [DataMember]
+            public string Name { get; set; }
         }
 
-        public string SerializeAndPurge()
-        {
-            List<EventLog> snapshot;
-
-            // Step 1: Clone the current list
-            lock (_lock)
-            {
-                snapshot = _events.ToList();    // shallow copy
-            }
-
-            // Step 2: Serialize the snapshot
-            var serializer = new DataContractJsonSerializer (typeof(List<EventLog>));
-            using (var ms = new MemoryStream())
-            {
-                serializer.WriteObject(ms, snapshot);
-                string json = Encoding.UTF8.GetString (ms.ToArray());
-
-                // Step 3: Remove serialized events 
-                lock (_lock)
-                {
-                    foreach (var e in snapshot)
-                    {
-                        _events.Remove(e);  // assumes reference equality
-                    }
-                }
-                return json;
-            }
-        }
-    }
-
-    internal class Program
-    {
         static void Main(string[] args)
         {
-            //var logger = new EventLogger();
-            var logger = new SnapshotEventLogger();
+            var consoleLogger = new ConsoleLogger();
+            var fileLogger = new FileLogger("logs.txt");
+            var memoryLogger = new MemoryLogger();
 
-            // Task 1: Continously add events
-            var writerTask = Task.Run(() =>
+            // subscribe each logger's handler to the delegate
+            Logger.LogDelegate += consoleLogger.HandleLog;
+            Logger.LogDelegate += fileLogger.HandleLog;
+            Logger.LogDelegate += memoryLogger.HandleLog;
+            Logger.PurgeAndSerializeDelegate += memoryLogger.PurgeAndSerialize;
+
+            // Use the logger
+            Logger.Log("System initialized!");
+            Logger.Log("Heartbeat OK.");
+
+            string json = Logger.SerializeAndPurge();
+            Console.WriteLine(json);
+
+            // Create a response
+            Response r = new Response();
+            r.SerializedLogs = json;
+            r.Name = "Example";
+
+            // Serialize the response
+            string serializedResponseJson = null;
+            var responseSerializer = new DataContractJsonSerializer(typeof(Response));
+            using (var ms = new MemoryStream())
             {
-                int id = 0;
-                while (true)
-                {
-                    logger.AddEvent(new EventLog(id++, $"Message {id}"));
-                    Thread.Sleep(10);   // simulate work
-                }
-            });
+                responseSerializer.WriteObject(ms, r);
+                serializedResponseJson = Encoding.UTF8.GetString(ms.ToArray());
+            }
 
-            // Task 2: Continuously serialize
-            var readerTask = Task.Run(() =>
+            Console.WriteLine(serializedResponseJson);
+
+            // ---------------------------------------------------------------------------
+
+            Response response = null;
+            using (var ms = new MemoryStream(Encoding.UTF8.GetBytes(serializedResponseJson)))
             {
-                while (true)
-                {
-                    try
-                    {
-                        // string json = EventLogger.SerializeToString(logger);
-                        string json = logger.SerializeAndPurge();
-                        Console.WriteLine(json);
-                    }
-                    catch (Exception ex)
-                    {
-                        Console.WriteLine($"SerializationBinder failed:\n{ex.Message}");
-                    }
+                response = (Response)responseSerializer.ReadObject(ms);
+            }
 
-                    Thread.Sleep(50);   // simulate interval
-                }
-            });
-
-            // Wait forever
-            Task.WaitAll(writerTask, readerTask);
+            // Extract the logs
+            List<string> logs = null;
+            var logsSerializer = new DataContractJsonSerializer(typeof(List<string>));
+            using (var ms = new MemoryStream(Encoding.UTF8.GetBytes(response.SerializedLogs)))
+            {
+                logs = (List<string>)logsSerializer.ReadObject(ms);
+            }
+            foreach (var l in logs)
+            {
+                Console.WriteLine(l);
+            }
         }
     }
 }
