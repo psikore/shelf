@@ -25,7 +25,7 @@ def callback(ch, method, properties, body):
     print(f"Received chunk {offset}-{offset+len(data)-1}")
 
 
-def consume_chunks():
+defa consume_chunks():
     connection = pika.BlockingConnection(pika.ConnectionParameters(RABBITMQ_HOST))
     channel = connection.channel()
     channel.queue_declare(queue=QUEUE_NAME)
