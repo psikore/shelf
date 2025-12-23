@@ -234,3 +234,58 @@ if __name__ == "__main__":
 
 afterwards git push
 
+
+
+An updated script to handle either hashes or tags
+
+```Python
+import re
+import subprocess
+import sys
+from pathlib import Path
+
+SHA_RE = re.compile(r"^[0-9a-fA-F]{7,40}$")
+
+def is_commit_hash(s: str) -> bool:
+    return bool(SHA_RE.match(s))
+
+
+def update_submodule(name, version):
+    submodule_path = Path(name)
+    if not submodule_path.exists():
+        print(f"Submodule directory not found: {submodule_path}")
+        sys.exit(1)
+
+    print(f"\n=== Updating {name} to {version} ===")
+
+    # Always fetch tags + commits
+    run("git fetch --all --tags", cwd=submodule_path)
+
+    # If it's a commit hash, checkout directly
+    if is_commit_hash(version):
+        print(f"Detected commit hash for {name}")
+        run(f"git checkout {version}", cwd=submodule_path)
+
+    else:
+        # Treat as tag or branch
+        # First verify tag exists
+        tags = subprocess.check_output(
+            "git tag --list", cwd=submodule_path, shell=True
+        ).decode().split()
+
+        if version in tags:
+            print(f"Detected tag for {name}")
+            run(f"git checkout {version}", cwd=submodule_path)
+        else:
+            print(f"Warning: '{version}' is not a tag. Attempting checkout anyway.")
+            run(f"git checkout {version}", cwd=submodule_path)
+
+    # Verify commit SHA
+    sha = subprocess.check_output(
+        "git rev-parse HEAD", cwd=submodule_path, shell=True
+    ).decode().strip()
+    print(f"{name} now at commit {sha}")
+
+    # Stage updated pointer in parent repo
+    run(f"git add {submodule_path}")
+```
