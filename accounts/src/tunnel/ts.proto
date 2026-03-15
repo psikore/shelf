@@ -1,0 +1,20 @@
+
+syntax = "proto3";
+
+package tunnel;
+
+service TunnelService {
+    rpc StreamTunnel(TunnelRequest) returns (stream TunnelChunk);
+}
+
+message TunnelRequest {
+    string target_host;
+    int32 target_port;
+    string http_path; 
+}
+
+message TunnelChunk {
+    bytes data = 1;
+    bool end_of_stream = 2;
+}
+
