@@ -5,6 +5,7 @@ using System.IO;
 using System.Collections.Concurrent;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Diagnostics;
 
 namespace SharpTep
 {
@@ -28,6 +29,7 @@ namespace SharpTep
 
         public async Task StartReaderAsync()
         {
+            Debug.WriteLine("[server] Starting reader");
             var buffer = new byte[16 * 1024];
             try
             {
@@ -35,7 +37,10 @@ namespace SharpTep
                 {
                     int read = await Stream.ReadAsync(buffer, 0, buffer.Length, Cts.Token);
                     if (read <= 0)
+                    {
+                        Debug.WriteLine("Read 0 bytes - breaking");
                         break;
+                    }
 
                     var chunk = new byte[read];
                     Buffer.BlockCopy(buffer, 0, chunk, 0, read);
@@ -183,7 +188,7 @@ namespace SharpTep
             }
             catch (Exception e)
             {
-                Console.WriteLine($"[server] error {e}");
+                Debug.WriteLine($"[server] error {e}");
                 try { ctx.Response.StatusCode = 500; ctx.Response.Close(); } catch { }
             }
         }

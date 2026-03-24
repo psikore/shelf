@@ -9,12 +9,15 @@ async def handle(reader, writer):
             data = await reader.read(4096)
             if not data:
                 break
+            print("writing data")
             writer.write(data)
             await writer.drain()
     except:
         pass
     finally:
+        print("closing writer")
         writer.close()
+        print("waiting til closed")
         await writer.wait_closed()
         print("client disconnected")
 

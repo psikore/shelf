@@ -1,0 +1,42 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Echo Server (Python)",
+      "type": "debugpy",
+      "request": "launch",
+      "program": "${workspaceFolder}/echoserver.py",
+      "console": "integratedTerminal",
+      "consoleName": "Echo Server"
+    },
+    {
+      "name": "Tunnel Client (Python)",
+      "type": "debugpy",
+      "request": "launch",
+      "program": "${workspaceFolder}/client.py",
+      "console": "integratedTerminal",
+      "consoleName": "client tep"
+    },
+    {
+      "name": "Tunnel Server (C#)",
+      "type": "coreclr",
+      "request": "launch",
+      "program": "${workspaceFolder}/bin/Debug/net8.0/duo.dll",
+      "cwd": "${workspaceFolder}",
+      "preLaunchTask": "build-duo",
+      "console": "integratedTerminal",
+      "consoleName": "server tep"
+    }
+  ],
+
+  "compounds": [
+    {
+      "name": "Run Full Tunnel Stack",
+      "configurations": [
+        "Echo Server (Python)",
+        "Tunnel Server (C#)",
+        "Tunnel Client (Python)"
+      ]
+    }
+  ]
+}

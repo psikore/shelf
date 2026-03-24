@@ -19,7 +19,7 @@ async def handle_connection(reader: asyncio.StreamReader, writer: asyncio.Stream
                 data = await reader.read(CHUNK_SIZE)
                 if not data:
                     # EOF from local connection -> tell server to close
-
+                    print(f"[client:{conn_id}: POST close to server")
                     async with session.post(
                         SERVER_URL,
                         data=b"",
@@ -29,8 +29,10 @@ async def handle_connection(reader: asyncio.StreamReader, writer: asyncio.Stream
                         },                        
                     ) as resp:
                         await resp.read()
+                        print(f"close {resp.status}")
                     break
 
+                print(f"[client:{conn_id}: posting data")
                 async with session.post(
                     SERVER_URL,
                     data=data,
@@ -40,12 +42,14 @@ async def handle_connection(reader: asyncio.StreamReader, writer: asyncio.Stream
                 ) as resp:
                     # Optionally check status
                     await resp.read()
+                    print(f"[client:{conn_id}: post {resp.status}")
         except Exception as e:
             print(f"[client:{conn_id}] upstream err: {e}")
     
     async def downstream():
         try:
             while True:
+                print(f"[client:{conn_id}] GET polling server for data")
                 async with session.get(
                     SERVER_URL,
                     headers={
@@ -56,10 +60,12 @@ async def handle_connection(reader: asyncio.StreamReader, writer: asyncio.Stream
                     closed = resp.headers.get("X-Closed") == "1"
                     body = await resp.read()
                     if body:
+                        print(f"[client:{conn_id}] writing data rcvd from GET response to writer") 
                         writer.write(body)
                         await writer.drain()
 
                     if closed:
+                        print(f"[client:{conn_id}] GET rcvd close from server")
                         break
 
         except Exception as e:
