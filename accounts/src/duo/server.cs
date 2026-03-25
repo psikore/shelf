@@ -1,7 +1,6 @@
 using System;
 using System.Net;
 using System.Net.Sockets;
-using System.IO;
 using System.Collections.Concurrent;
 using System.Threading;
 using System.Threading.Tasks;
@@ -144,15 +143,8 @@ namespace SharpTep
                         return;
                     }
 
-                    byte[] data;
-                    using (var ms = new MemoryStream())
-                    {
-                        await ctx.Request.InputStream.CopyToAsync(ms);
-                        data = ms.ToArray();
-                    }
-
-                    if (data.Length > 0)
-                        await conn.WriteAsync(data);
+                    await ctx.Request.InputStream.CopyToAsync(conn.Stream);
+                    await conn.Stream.FlushAsync();
 
                     ctx.Response.StatusCode = 200;
                     ctx.Response.Close();
