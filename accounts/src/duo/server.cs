@@ -100,6 +100,8 @@ namespace SharpTep
     // --- Server class ---
     public class Server
     {
+        private const int MAX_BATCH_SIZE = 64 * 1024;
+
         public static async Task Serve()
         {
             var registry = new TunnelRegistry("127.0.0.1", 5000);
@@ -154,16 +156,35 @@ namespace SharpTep
 
                 if (ctx.Request.HttpMethod == "GET")
                 {
-                    byte[] chunk;
-
                     try
                     {
-                        if (!conn.DownQueue.TryTake(out chunk, TimeSpan.FromSeconds(25)))
+                        // First chunk: wait up to 25 seconds (long-poll)
+                        if (!conn.DownQueue.TryTake(out var firstChunk, TimeSpan.FromSeconds(25)))
                         {
                             ctx.Response.StatusCode = 204;
                             ctx.Response.Close();
                             return;
                         }
+
+                        long total = 0;
+
+                        // Write first chunk immediately
+                        await ctx.Response.OutputStream.WriteAsync(firstChunk, 0, firstChunk.Length);
+                        total += firstChunk.Length;
+
+                        // Try to take more chunks without blocking
+                        while (total < MAX_BATCH_SIZE &&
+                                conn.DownQueue.TryTake(out var nextChunk, TimeSpan.Zero))
+                        {
+                            await ctx.Response.OutputStream.WriteAsync(nextChunk, 0, nextChunk.Length);
+                            total += nextChunk.Length;
+                        }
+
+                        if (conn.DownQueue.IsCompleted)
+                            ctx.Response.AddHeader("X-Closed", "1");
+
+                        ctx.Response.StatusCode = 200;
+                        ctx.Response.Close();
                     }
                     catch
                     {
