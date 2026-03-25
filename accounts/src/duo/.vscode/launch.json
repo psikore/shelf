@@ -18,6 +18,14 @@
       "consoleName": "client tep"
     },
     {
+      "name": "Echo Client (Python)",
+      "type": "debugpy",
+      "request": "launch",
+      "program": "${workspaceFolder}/echoclient.py",
+      "console": "integratedTerminal",
+      "consoleName": "Echo Client"
+    },
+    {
       "name": "Tunnel Server (C#)",
       "type": "coreclr",
       "request": "launch",

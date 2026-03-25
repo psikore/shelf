@@ -5,7 +5,6 @@ using System.IO;
 using System.Collections.Concurrent;
 using System.Threading;
 using System.Threading.Tasks;
-using System.Diagnostics;
 
 namespace SharpTep
 {
@@ -15,8 +14,8 @@ namespace SharpTep
         public string Id { get; }
         public TcpClient TcpClient { get; }
         public NetworkStream Stream { get; }
-        public BlockingCollection<byte[]> DownQueue { get; } = new();
-        public CancellationTokenSource Cts { get; } = new();
+        public BlockingCollection<byte[]> DownQueue { get; } = new BlockingCollection<byte[]>();
+        public CancellationTokenSource Cts { get; } = new CancellationTokenSource();
 
         public TunnelConnection(string id, string targetHost, int targetPort)
         {
@@ -24,12 +23,13 @@ namespace SharpTep
             TcpClient = new TcpClient();
             TcpClient.Connect(targetHost, targetPort);
             Stream = TcpClient.GetStream();
+            Console.WriteLine($"[server] new connection {id} -> {targetHost}:{targetPort}");
             _ = StartReaderAsync();
         }
 
         public async Task StartReaderAsync()
         {
-            Debug.WriteLine("[server] Starting reader");
+            Console.WriteLine($"[server] reader started for {Id}");
             var buffer = new byte[16 * 1024];
             try
             {
@@ -38,7 +38,7 @@ namespace SharpTep
                     int read = await Stream.ReadAsync(buffer, 0, buffer.Length, Cts.Token);
                     if (read <= 0)
                     {
-                        Debug.WriteLine("Read 0 bytes - breaking");
+                        Console.WriteLine($"[server] connection {Id} upstream closed");
                         break;
                     }
 
@@ -62,6 +62,7 @@ namespace SharpTep
 
         public void Close()
         {
+            Console.WriteLine($"[server] closing connection {Id}");
             try { Cts.Cancel(); } catch { }
             try { Stream.Close(); } catch { }
             try { TcpClient.Close(); } catch { }
@@ -72,7 +73,7 @@ namespace SharpTep
     // --- TunnelRegistry class ---
     public class TunnelRegistry
     {
-        private readonly ConcurrentDictionary<string, TunnelConnection> _connections = new();
+        private readonly ConcurrentDictionary<string, TunnelConnection> _connections = new ConcurrentDictionary<string, TunnelConnection>();
         private readonly string _targetHost;
         private readonly int _targetPort;
 
@@ -136,15 +137,19 @@ namespace SharpTep
                     bool close = ctx.Request.Headers["X-Close"] == "1";
                     if (close)
                     {
+                        Console.WriteLine($"[server] client requested close for {conn_id}");
                         registry.Close(conn_id);
                         ctx.Response.StatusCode = 200;
                         ctx.Response.Close();
                         return;
                     }
 
-                    using var ms = new MemoryStream();
-                    await ctx.Request.InputStream.CopyToAsync(ms);
-                    var data = ms.ToArray();
+                    byte[] data;
+                    using (var ms = new MemoryStream())
+                    {
+                        await ctx.Request.InputStream.CopyToAsync(ms);
+                        data = ms.ToArray();
+                    }
 
                     if (data.Length > 0)
                         await conn.WriteAsync(data);
@@ -184,7 +189,8 @@ namespace SharpTep
                             ctx.Response.AddHeader("X-Closed", "1");
 
                         ctx.Response.StatusCode = 200;
-                        ctx.Response.Close();
+                        ctx.Response.Close();                    
+                        return;
                     }
                     catch
                     {
@@ -193,15 +199,6 @@ namespace SharpTep
                         ctx.Response.Close();
                         return;
                     }
-
-                    await ctx.Response.OutputStream.WriteAsync(chunk, 0, chunk.Length);
-
-                    if (conn.DownQueue.IsCompleted)
-                        ctx.Response.AddHeader("X-Closed", "1");
-
-                    ctx.Response.StatusCode = 200;
-                    ctx.Response.Close();
-                    return;
                 }
 
                 ctx.Response.StatusCode = 405;
@@ -209,7 +206,7 @@ namespace SharpTep
             }
             catch (Exception e)
             {
-                Debug.WriteLine($"[server] error {e}");
+                Console.WriteLine($"[server] error: {e.Message}");
                 try { ctx.Response.StatusCode = 500; ctx.Response.Close(); } catch { }
             }
         }

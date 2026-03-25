@@ -1,3 +1,13 @@
+using System.Threading.Tasks;
 using SharpTep;
 
-await Server.Serve();
+namespace SharpTep
+{
+    class Program
+    {
+        static async Task Main(string[] args)
+        {
+            await Server.Serve();
+        }
+    }
+}
