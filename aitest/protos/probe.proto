@@ -1,0 +1,16 @@
+syntax = "proto3";
+
+package probe;
+
+service ProbeService {
+  rpc Probe (ProbeRequest) returns (ProbeResponse);
+}
+
+message ProbeRequest {
+  string encryption_algorithm = 1;
+  string validation_algorithm = 2;
+}
+
+message ProbeResponse {
+  bool success = 1;
+}

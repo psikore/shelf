@@ -1,0 +1,4 @@
+{
+  "encryption_algorithm": "DES",
+  "validation_algorithm": "MD5"
+}

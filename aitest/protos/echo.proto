@@ -1,0 +1,17 @@
+syntax = "proto3";
+
+package echo;
+
+service EchoCommandService {
+  rpc Echo (CommandRequest) returns (CommandResponse);
+}
+
+message CommandRequest {
+  string encryption_algorithm = 1;
+  string validation_algorithm = 2;
+  string message = 3;
+}
+
+message CommandResponse {
+  string message = 1;
+}

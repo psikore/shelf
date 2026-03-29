@@ -1,0 +1,11 @@
+[tool.python_proto_importer]
+backend = "protoc"
+python_exe = "python3"
+include = ["."]
+inputs = ["*.proto"]
+out = "../_proto_gen"
+
+[tool.python_proto_importer.postprocess]
+relative_imports = true
+create_package = true
+exclude_google = true
