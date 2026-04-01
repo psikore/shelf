@@ -1,0 +1,30 @@
+## .NET
+bin/
+obj/
+
+## User-specific files
+*.user
+*.suo
+*.userosscache
+*.sln.docuser
+
+## NuGet
+*.nupkg
+*.snupkg
+**/[Pp]ackages/*
+!**/[Pp]ackages/build/
+
+## VS Code
+.vscode/.browse.db
+.vscode/.browse.db-journal
+
+## Rider / JetBrains
+.idea/
+*.sln.iml
+
+## Generated databases
+payloads.db
+
+## OS files
+.DS_Store
+Thumbs.db

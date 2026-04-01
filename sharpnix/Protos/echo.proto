@@ -1,0 +1,55 @@
+syntax = "proto3";
+
+option csharp_namespace = "EchoGrpc";
+
+package echo;
+
+service Echo {
+  rpc Send (EchoRequest) returns (EchoReply);
+}
+
+message EchoRequest {
+  string message = 1;
+}
+
+message EchoReply {
+  string message = 1;
+}
+
+service ViewState {
+  rpc Generate (ViewStateRequest) returns (ViewStateReply);
+  rpc ListGadgets (ListGadgetsRequest) returns (ListGadgetsReply);
+}
+
+message ViewStateRequest {
+  string gadget = 1;
+  string unsigned_payload = 2;
+  string validation_key = 3;
+  string validation_alg = 4;
+  string decryption_key = 5;
+  string decryption_alg = 6;
+  string target_path = 7;
+  string app_path = 8;
+  string viewstate_user_key = 9;
+  bool is_legacy = 10;
+  bool is_encrypted = 11;
+  string generator = 12;
+}
+
+message ViewStateReply {
+  string payload = 1;
+  string error = 2;
+}
+
+message ListGadgetsRequest {}
+
+message ListGadgetsReply {
+  repeated GadgetInfo gadgets = 1;
+  string error = 2;
+}
+
+message GadgetInfo {
+  string name = 1;
+  string description = 2;
+  bool needs_command = 3;
+}

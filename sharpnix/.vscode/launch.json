@@ -1,0 +1,16 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Debug EchoClient",
+            "type": "coreclr",
+            "request": "launch",
+            "preLaunchTask": "build-client",
+            "program": "${workspaceFolder}/EchoClient/bin/Debug/net8.0/EchoClient.dll",
+            "args": ["Hello from debugger!"],
+            "cwd": "${workspaceFolder}/EchoClient",
+            "console": "integratedTerminal",
+            "stopAtEntry": false
+        }
+    ]
+}
