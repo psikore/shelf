@@ -1,0 +1,80 @@
+syntax = "proto3";
+
+package poc;
+
+// Core identifiers
+
+message PeerId {
+    string id = 1;
+}
+
+message FileId {
+    string id = 1;  // e.g. url, hash, path, logical ID
+}
+
+// File request / job creation
+
+message RequestFileRequest {
+    PeerId peer_id = 1;
+    FileId file_id = 2;
+}
+
+message RequestFileResponse {
+    string job_id = 1;
+
+    // Optional: metadata
+    int64 file_size = 2;
+    int64 piece_size = 3;
+    int64 num_pieces = 4;
+}
+
+// Piece assignment from brain to peers
+
+message PieceAssignment {
+    string job_id = 1;
+    FileId file_id = 2;
+    PeerId peer_id = 3;
+
+    int64 piece_index = 4;
+    int64 offset = 5;
+    int64 length = 6;
+}
+
+message PieceResult {
+    string job_id = 1;
+    FileId file_id = 2;
+    PeerId peer_id = 3;
+
+    int64 piece_index = 4;
+    bool success = 5;
+    string error = 6;
+}
+
+// Piece upload from peer to brain
+message UploadPieceRequest {
+    string job_id = 1;
+    FileId file_id = 2;
+    PeerId peer_id = 3;
+    int64 piece_index = 4;
+    bytes data = 5;
+}
+
+message UploadPieceResponse {
+    bool accepted = 1;
+    string error = 2;
+}
+
+service Brain {
+    // "I want this file"
+    rpc RequestFile(RequestFileRequest) returns (RequestFileResponse);
+
+    // Long-lived bidirectional stream:
+    // - Brain sends PieceAssignment messages.
+    // - Peer sends PieceResult messages as it completes or fails them.
+    rpc PieceAssignmentStream(streaam PieceResult) returns (stream PieceAssignment);
+
+    // Peer uploads a completed piece.
+    rpc UploadPiece(UploadPieceRequest) returns (UploadPieceResponse);
+
+    // rpc RegisterPeer(RegisterPeerRequest) returns (RegisterPeerRepsonse);
+}
